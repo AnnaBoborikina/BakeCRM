@@ -1,0 +1,67 @@
+<!-- templates/bakery/admin_dashboard.html -->
+{% extends 'base.html' %}
+{% block title %}Панель администратора — BakeCRM{% endblock %}
+
+{% block content %}
+<div class="hero text-center">
+    <h2>Панель управления</h2>
+    <p class="text-muted">Полноценная CRM-система для пекарни</p>
+</div>
+
+<div class="row g-4">
+    <!-- Рабочее место продавца -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 feature-card">
+            <div class="card-body text-center d-flex flex-column">
+                <h5 class="card-title">Рабочее место продавца</h5>
+                <p class="flex-grow-1">Создание заказов как продавец</p>
+                <a href="{% url 'home' %}?mode=seller" class="btn btn-light">Открыть</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Заказы -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 feature-card">
+            <div class="card-body text-center d-flex flex-column">
+                <h5 class="card-title">Заказы</h5>
+                <p class="flex-grow-1">Просмотр, редактирование, удаление</p>
+                <a href="{% url 'bakery:order_list_admin' %}" class="btn btn-light">Открыть</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Товары -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 feature-card">
+            <div class="card-body text-center d-flex flex-column">
+                <h5 class="card-title">Товары</h5>
+                <p class="flex-grow-1">Управление ассортиментом</p>
+                <a href="{% url 'bakery:product_list_admin' %}" class="btn btn-light">Открыть</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пользователи -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 feature-card">
+            <div class="card-body text-center d-flex flex-column">
+                <h5 class="card-title">Пользователи</h5>
+                <p class="flex-grow-1">Продавцы и администраторы</p>
+                <a href="{% url 'bakery:user_list_admin' %}" class="btn btn-light">Открыть</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Отчёты -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 feature-card">
+            <div class="card-body text-center d-flex flex-column">
+                <h5 class="card-title">Отчёты</h5>
+                <p class="flex-grow-1">Графики и экспорт данных</p>
+                <a href="{% url 'bakery:reports' %}" class="btn btn-light">Открыть</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+<!-- templates/index.html -->
+{% extends 'base.html' %}
+
+{% block title %}Главная — BakeCRM{% endblock %}
+
+{% block content %}
+<div class="hero text-center">
+    <h1 class="display-4 fw-bold">Добро пожаловать в BakeCRM!</h1>
+    <p class="lead">Свежая выпечка каждый день. Закажите онлайн или заберите в пекарне.</p>
+    <div class="mt-4">
+        {% if user.is_authenticated %}
+            <a href="{% url 'order_create' %}" class="btn btn-success btn-lg">Оформить заказ</a>
+            <a href="{% url 'order_list' %}" class="btn btn-outline-secondary btn-lg ms-2">Мои заказы</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn btn-primary btn-lg">Войти в систему заказов</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="feature-card">
+            <h5>Свежесть гарантируем</h5>
+            <p class="mb-0">Выпечка готовится каждое утро из натуральных ингредиентов.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="feature-card">
+            <h5>Быстрая доставка</h5>
+            <p class="mb-0">Заберите в пекарне или закажите доставку до двери.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="feature-card">
+            <h5>Удобная оплата</h5>
+            <p class="mb-0">Наличные, карта, терминал — как вам удобно.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

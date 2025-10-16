@@ -1,0 +1,25 @@
+<!-- templates/bakery/product_items.html -->
+{% for product in products %}
+<div class="col-6 col-md-4 col-lg-3 product-item" data-name="{{ product.name|lower }}">
+    <div class="card h-100 border-0 shadow-sm" style="cursor: pointer;" 
+         onclick="addToOrder({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }})">
+        {% if product.image %}
+        <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" 
+             style="height: 140px; object-fit: cover; border-radius: 8px 8px 0 0;">
+        {% else %}
+        <div class="bg-light d-flex align-items-center justify-content-center" 
+             style="height: 140px; border-radius: 8px 8px 0 0;">
+            <span class="text-muted">Нет фото</span>
+        </div>
+        {% endif %}
+        <div class="card-body text-center p-2">
+            <h6 class="card-title mb-1">{{ product.name }}</h6>
+            <div class="h6 text-success">{{ product.price }} ₽</div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if products.has_next %}
+<div id="next-page" data-page="{{ products.next_page_number }}"></div>
+{% endif %}

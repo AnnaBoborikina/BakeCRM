@@ -1,0 +1,119 @@
+<!-- templates/bakery/order_list_admin.html -->
+{% extends 'base.html' %}
+{% block title %}Заказы — Админка{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Все заказы</h2>
+    <a href="{% url 'home' %}" class="btn btn-outline-secondary">← Назад</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th><th>Дата</th><th>Продавец</th><th>Статус</th><th>Сумма</th><th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>#{{ order.id }}</td>
+                <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
+                <td>{{ order.created_by.username }}</td>
+                <td>
+                    {% if order.status == 'completed' %}<span class="badge bg-success">Завершён</span>
+                    {% elif order.status == 'paid' %}<span class="badge bg-info">Оплачен</span>
+                    {% elif order.status == 'pending' %}<span class="badge bg-warning">Ожидает оплаты</span>
+                    {% else %}<span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ order.total_amount }} ₽</td>
+                <td>
+                    <button class="btn btn-sm btn-primary me-1" 
+                            onclick="openOrderModal({{ order.id }}, '{{ order.get_status_display|escapejs }}', '{{ order.status }}')">
+                        Редактировать
+                    </button>
+                    <button class="btn btn-sm btn-danger" 
+                            onclick="deleteOrder({{ order.id }})">
+                        Удалить
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Модальное окно заказа -->
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать заказ #<span id="modalOrderId"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="orderId">
+                <div class="mb-3">
+                    <label class="form-label">Статус</label>
+                    <select id="orderStatus" class="form-select">
+                        <option value="pending">Ожидает оплаты</option>
+                        <option value="paid">Оплачен</option>
+                        <option value="completed">Завершён</option>
+                        <option value="cancelled">Отменён</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveOrder()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openOrderModal(id, statusDisplay, statusValue) {
+    document.getElementById('orderId').value = id;
+    document.getElementById('modalOrderId').textContent = id;
+    document.getElementById('orderStatus').value = statusValue;
+    const modal = new bootstrap.Modal(document.getElementById('orderModal'));
+    modal.show();
+}
+
+function saveOrder() {
+    const orderId = document.getElementById('orderId').value;
+    const status = document.getElementById('orderStatus').value;
+    fetch(`/bakery/admin/order/${orderId}/update/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: JSON.stringify({status: status})
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (res.error || 'Не удалось сохранить'));
+        }
+    });
+}
+
+function deleteOrder(orderId) {
+    if (!confirm('Удалить заказ #' + orderId + '?')) return;
+    fetch(`/bakery/admin/order/${orderId}/delete/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (res.error || 'Не удалось удалить'));
+        }
+    });
+}
+</script>
+{% endblock %}

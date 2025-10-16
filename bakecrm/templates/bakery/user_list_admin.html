@@ -1,0 +1,164 @@
+<!-- templates/bakery/user_list_admin.html -->
+{% extends 'base.html' %}
+{% block title %}Пользователи — Админка{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Пользователи</h2>
+    <div>
+        <button class="btn btn-success" onclick="openUserModal()">+ Добавить пользователя</button>
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">← Назад</a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th><th>Логин</th><th>Имя</th><th>Email</th><th>Роль</th><th>Статус</th><th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.get_full_name|default:"—" }}</td>
+                <td>{{ user.email|default:"—" }}</td>
+                <td>
+                    {% if user.is_superuser %}Администратор
+                    {% elif user.is_staff %}Продавец
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    {% if user.is_active %}<span class="badge bg-success">Активен</span>
+                    {% else %}<span class="badge bg-secondary">Неактивен</span>{% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="openUserModal(
+                        {{ user.id }},
+                        '{{ user.username|escapejs }}',
+                        '{{ user.first_name|escapejs }}',
+                        '{{ user.last_name|escapejs }}',
+                        '{{ user.email|escapejs }}',
+                        {{ user.is_staff|lower }},
+                        {{ user.is_active|lower }}
+                    )">Редактировать</button>
+                    {% if not user.is_superuser %}
+                    <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">Удалить</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Модальное окно пользователя -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalLabel">Добавить пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="userId">
+                <div class="mb-3">
+                    <label class="form-label">Логин *</label>
+                    <input type="text" id="userUsername" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" id="userPassword" class="form-control" placeholder="Оставьте пустым при редактировании">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Имя</label>
+                    <input type="text" id="userFirstName" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Фамилия</label>
+                    <input type="text" id="userLastName" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="userEmail" class="form-control">
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" id="userIsStaff" class="form-check-input">
+                    <label class="form-check-label">Продавец (доступ к заказам)</label>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" id="userIsActive" class="form-check-input" checked>
+                    <label class="form-check-label">Активен</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" onclick="saveUser()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<br><br><br><br><br><br>
+
+<script>
+let currentUserId = null;
+
+function openUserModal(id=null, username='', first='', last='', email='', isStaff=false, isActive=true) {
+    currentUserId = id;
+    document.getElementById('userId').value = id || '';
+    document.getElementById('userUsername').value = username;
+    document.getElementById('userPassword').value = '';
+    document.getElementById('userFirstName').value = first;
+    document.getElementById('userLastName').value = last;
+    document.getElementById('userEmail').value = email;
+    document.getElementById('userIsStaff').checked = isStaff;
+    document.getElementById('userIsActive').checked = isActive;
+    document.getElementById('userModalLabel').textContent = id ? 'Редактировать пользователя' : 'Добавить пользователя';
+    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    modal.show();
+}
+
+function saveUser() {
+    const data = {
+        id: currentUserId,
+        username: document.getElementById('userUsername').value,
+        password: document.getElementById('userPassword').value,
+        first_name: document.getElementById('userFirstName').value,
+        last_name: document.getElementById('userLastName').value,
+        email: document.getElementById('userEmail').value,
+        is_staff: document.getElementById('userIsStaff').checked,
+        is_active: document.getElementById('userIsActive').checked
+    };
+    if (!data.username) {
+        alert('Укажите логин');
+        return;
+    }
+    fetch('{% url "bakery:user_save" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) location.reload();
+        else alert('Ошибка: ' + res.error);
+    });
+}
+
+function deleteUser(id) {
+    if (!confirm('Удалить пользователя?')) return;
+    fetch(`/bakery/admin/user/${id}/delete/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) location.reload();
+        else alert('Ошибка: ' + res.error);
+    });
+}
+</script>
+{% endblock %}

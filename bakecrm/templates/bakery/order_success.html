@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Заказ оформлен — BakeCRM{% endblock %}
+
+{% block content %}
+<div class="hero text-center">
+    <h2 class="text-success">✅ Заказ завершён!</h2>
+    <p class="lead">Заказ #{{ order.id }} успешно оплачен и завершён.</p>
+    <div class="h4">Сумма: {{ order.total_amount }} ₽</div>
+    <a href="{% url 'home' %}" class="btn btn-success">Новый заказ</a>
+</div>
+{% endblock %}

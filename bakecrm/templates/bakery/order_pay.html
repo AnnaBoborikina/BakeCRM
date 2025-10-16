@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Оплата — BakeCRM{% endblock %}
+
+{% block content %}
+<div class="hero text-center">
+    <h2>Оплата заказа</h2>
+    <p class="lead">Заказ #{{ order.id }} на сумму <strong>{{ order.total_amount }} ₽</strong></p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center">
+                <div class="display-6 mb-4">💳 Терминал оплаты</div>
+                <p>Нажмите кнопку ниже, чтобы имитировать оплату через банковский терминал.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-lg w-100">Оплатить {{ order.total_amount }} ₽</button>
+                </form>
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary mt-3">Отмена</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

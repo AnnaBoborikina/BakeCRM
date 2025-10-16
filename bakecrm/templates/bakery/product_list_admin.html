@@ -1,0 +1,186 @@
+<!-- templates/bakery/product_list_admin.html -->
+{% extends 'base.html' %}
+{% block title %}Товары — Админка{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Товары</h2>
+    <div>
+        <button class="btn btn-success" onclick="openProductModal()">+ Добавить товар</button>
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">← Назад</a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th><th>Фото</th><th>Название</th><th>Описание</th><th>Цена</th><th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.id }}</td>
+                <td>
+                    {% if product.image %}
+                        <img src="{{ product.image.url }}" style = "max-height:40px; max-width:40px; object-fit: cover; border-radius: 4px;">
+                    {% endif %}
+                </td>
+                <td>{{ product.name }}</td>
+                <td>{{ product.description|truncatewords:8 }}</td>
+                <td>{{ product.price }} ₽</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="openProductModal(
+                    {{ product.id }}, 
+                    '{{ product.name|escapejs }}', 
+                    '{{ product.description|escapejs }}', 
+                    {{ product.price }}, 
+                    {% if product.image %}'{{ product.image.url }}'{% else %}''{% endif %}
+                    )">Редактировать</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteProduct({{ product.id }})">Удалить</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Модальное окно товара -->
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">Добавить товар</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="productId">
+                <div class="mb-3">
+                    <label class="form-label">Название *</label>
+                    <input type="text" id="productName" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Описание</label>
+                    <textarea id="productDescription" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Цена (₽) *</label>
+                    <input type="number" id="productPrice" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Изображение</label>
+                    <input type="file" id="productImage" class="form-control" accept="image/*">
+                    <div id="imagePreview" class="mt-2" style="display: none;">
+                        <img id="previewImg" src="" alt="Превью" style="max-height: 150px; max-width: 100%;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" onclick="saveProduct()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+<br><br><br><br><br><br>
+<script>
+let currentProductId = null;
+
+function openProductModal(id = null, name = '', desc = '', price = '', image = '') {
+    currentProductId = id;
+    document.getElementById('productId').value = id || '';
+    document.getElementById('productName').value = name;
+    document.getElementById('productDescription').value = desc;
+    document.getElementById('productPrice').value = price;
+    
+    const preview = document.getElementById('imagePreview');
+    const img = document.getElementById('previewImg');
+    if (image) {
+        img.src = image;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+    
+    document.getElementById('productImage').value = ''; // сброс файла
+    document.getElementById('productModalLabel').textContent = id ? 'Редактировать товар' : 'Добавить товар';
+    const modal = new bootstrap.Modal(document.getElementById('productModal'));
+    modal.show();
+}
+
+// Предпросмотр изображения
+document.getElementById('productImage').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('imagePreview');
+    const img = document.getElementById('previewImg');
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+});
+
+function saveProduct() {
+    const name = document.getElementById('productName').value;
+    const price = document.getElementById('productPrice').value;
+    if (!name || !price) {
+        alert('Заполните обязательные поля');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('id', currentProductId);
+    formData.append('name', name);
+    formData.append('description', document.getElementById('productDescription').value);
+    formData.append('price', price);
+    
+    const fileInput = document.getElementById('productImage');
+    if (fileInput.files.length > 0) {
+        formData.append('image', fileInput.files[0]);
+    }
+
+    // Определяем URL
+    const url = '{% url "bakery:product_save" %}';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+            // Content-Type НЕ указываем — браузер сам поставит multipart/form-data
+        },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (res.error || 'Не удалось сохранить товар'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Ошибка при сохранении');
+    });
+}
+
+function deleteProduct(id) {
+    if (!confirm('Удалить товар?')) return;
+    fetch(`/bakery/admin/product/${id}/delete/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) location.reload();
+        else alert('Ошибка: ' + res.error);
+    });
+}
+</script>
+{% endblock %}

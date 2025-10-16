@@ -1,0 +1,187 @@
+<!-- templates/bakery/reports.html -->
+{% extends 'base.html' %}
+{% block title %}Отчёты — Админка{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Расширенная аналитика продаж</h2>
+    <a href="{% url 'home' %}" class="btn btn-outline-secondary">← Назад</a>
+</div>
+
+<!-- График 1: Заказы по часам -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Заказы по часам (сегодня)</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="chartHourly" height="100"></canvas>
+    </div>
+</div>
+
+<!-- График 2: Выручка по дням недели -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Выручка по дням недели</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="chartWeekly" height="100"></canvas>
+    </div>
+</div>
+
+<div class="row">
+    <!-- График 3: Топ товаров -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Топ-10 товаров</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartTopProducts" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- График 4: Средний чек -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Средний чек по дням месяца</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartAvgCheck" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Экспорт -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Экспорт отчётов</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'bakery:export_xlsx' %}?type=sales" class="btn btn-outline-secondary">XLSX: Продажи</a>
+            <a href="{% url 'bakery:export_pdf' %}?type=sales" class="btn btn-outline-secondary">PDF: Продажи</a>
+        </div>
+    </div>
+</div>
+<br><br><br><br><br><br>
+<script>
+let charts = {};
+
+function initCharts(data) {
+    // График 1: По часам
+    const ctx1 = document.getElementById('chartHourly').getContext('2d');
+    charts.hourly = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: data.hourly_labels,
+            datasets: [{
+                label: 'Количество заказов',
+                data: data.hourly_values,
+                backgroundColor: 'rgba(139, 90, 43, 0.7)',
+                borderColor: 'rgba(139, 90, 43, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
+    });
+
+    // График 2: Неделя
+    const ctx2 = document.getElementById('chartWeekly').getContext('2d');
+    charts.weekly = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: data.weekly_labels,
+            datasets: [{
+                label: 'Выручка (₽)',
+                data: data.weekly_values,
+                backgroundColor: 'rgba(166, 124, 82, 0.7)',
+                borderColor: 'rgba(166, 124, 82, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // График 3: Топ товаров
+    if (data.top_products_labels && data.top_products_labels.length > 0) {
+        const ctx3 = document.getElementById('chartTopProducts').getContext('2d');
+        charts.top = new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: data.top_products_labels,
+                datasets: [{
+                    label: 'Продано шт.',
+                    data: data.top_products_values,
+                    backgroundColor: 'rgba(212, 165, 116, 0.7)',
+                    borderColor: 'rgba(212, 165, 116, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+    } else {
+        document.querySelector('#chartTopProducts').closest('.card').style.display = 'none';
+    }
+
+    // График 4: Средний чек
+    if (data.avg_check_labels && data.avg_check_labels.length > 0) {
+        const ctx4 = document.getElementById('chartAvgCheck').getContext('2d');
+        charts.avg = new Chart(ctx4, {
+            type: 'line',
+            data: {
+                labels: data.avg_check_labels,
+                datasets: [{
+                    label: 'Средний чек (₽)',
+                    data: data.avg_check_values,
+                    borderColor: 'rgb(139, 90, 43)',
+                    backgroundColor: 'rgba(139, 90, 43, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    } else {
+        document.querySelector('#chartAvgCheck').closest('.card').style.display = 'none';
+    }
+}
+
+// Загрузка данных
+fetch('{% url "bakery:reports_data" %}')
+    .then(r => r.json())
+    .then(data => {
+        console.log("Данные отчётов:", data);
+        initCharts(data);
+    })
+    .catch(err => {
+        console.error("Ошибка:", err);
+        alert("Не удалось загрузить данные для отчётов");
+    });
+</script>
+{% endblock %}

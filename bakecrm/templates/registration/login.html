@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Вход — BakeCRM{% endblock %}
+
+{% block content %}
+<div class="hero text-center">
+    <h2>Добро пожаловать в BakeCRM</h2>
+    <p class="lead">Пожалуйста, войдите в систему</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                {% if form.errors %}
+                    <div class="alert alert-danger">Неверное имя пользователя или пароль.</div>
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Имя пользователя</label>
+                        {{ form.username }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Пароль</label>
+                        {{ form.password }}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Войти</button>
+                    <input type="hidden" name="next" value="{{ next }}">
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

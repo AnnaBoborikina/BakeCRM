@@ -1,0 +1,255 @@
+<!-- templates/bakery/seller_dashboard.html -->
+{% extends 'base.html' %}
+{% block title %}Рабочее место продавца — BakeCRM{% endblock %}
+
+{% block content %}
+<div class="hero text-center">
+    <h2>Рабочее место продавца</h2>
+    <p class="text-muted">Выберите товары для нового заказа</p>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <!-- Поиск -->
+        <div class="input-group mb-3">
+            <span class="input-group-text">🔍</span>
+            <input type="text" id="productSearch" class="form-control" placeholder="Поиск по названию...">
+        </div>
+
+        <!-- Прокручиваемая панель товаров -->
+        <div id="productScrollContainer" style="height: 400px; overflow-y: auto;">
+            <div class="row g-3" id="productList">
+                {% for product in products %}
+                <div class="col-6 col-md-4 col-lg-3 product-item" data-name="{{ product.name|lower }}">
+                    <div class="card h-100 border-0 shadow-sm" style="cursor: pointer;" 
+                         onclick="addToOrder({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }})">
+                        {% if product.image %}
+                        <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" 
+                             style="height: 120px; object-fit: cover; border-radius: 8px 8px 0 0;">
+                        {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center" 
+                             style="height: 120px; border-radius: 8px 8px 0 0;">
+                            <span class="text-muted">Нет фото</span>
+                        </div>
+                        {% endif %}
+                        <div class="card-body text-center p-2">
+                            <h6 class="card-title mb-1">{{ product.name }}</h6>
+                            <div class="h6 text-success">{{ product.price }} ₽</div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center text-muted">Нет товаров</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Корзина (под панелью товаров) -->
+<div id="cartSection" class="card shadow-sm border-0" style="display: none;">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Ваш заказ</h5>
+    </div>
+    <div class="card-body">
+        <div id="cartItemsContainer">
+            <!-- Сюда будут добавляться позиции -->
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between align-items-center">
+            <strong>Итого: <span id="orderTotal">0</span> ₽</strong>
+            <button class="btn btn-success" onclick="showConfirmModal()">Оформить заказ</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение заказа</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите оформить заказ на сумму <strong id="confirmTotal">0 ₽</strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="showPaymentModal()">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Оплата через терминал</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="display-6 mb-4">💳</div>
+                <p>Имитация оплаты через банковский терминал...</p>
+                <div class="spinner-border text-primary" role="status" id="paymentSpinner" style="display: none;">
+                    <span class="visually-hidden">Обработка...</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" onclick="processPayment()">Оплатить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✅ Заказ завершён!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="lead">Заказ успешно оформлен и оплачен!</p>
+                <p><strong>Номер заказа:</strong> <span id="successOrderId">#1</span></p>
+                <p><strong>Сумма:</strong> <span id="successTotal">0 ₽</span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" onclick="resetCart()">ОК</button>
+            </div>
+        </div>
+    </div>
+</div>
+<br><br><br><br><br><br>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cart = [];
+
+function addToOrder(productId, name, price) {
+    const item = cart.find(i => i.id === productId);
+    if (item) {
+        item.quantity += 1;
+    } else {
+        cart.push({ id: productId, name: name, price: price, quantity: 1 });
+    }
+    renderCart();
+}
+
+function updateQuantity(productId, newQuantity) {
+    if (newQuantity < 1) {
+        removeFromCart(productId);
+        return;
+    }
+    const item = cart.find(i => i.id === productId);
+    if (item) {
+        item.quantity = newQuantity;
+        renderCart();
+    }
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(i => i.id !== productId);
+    renderCart();
+}
+
+function renderCart() {
+    const container = document.getElementById('cartItemsContainer');
+    const totalEl = document.getElementById('orderTotal');
+    const cartSection = document.getElementById('cartSection');
+    
+    if (cart.length === 0) {
+        cartSection.style.display = 'none';
+        return;
+    }
+    
+    cartSection.style.display = 'block';
+    container.innerHTML = '';
+    let total = 0;
+    
+    cart.forEach(item => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'd-flex align-items-center mb-2 p-2 border rounded';
+        itemEl.innerHTML = `
+            <div class="flex-grow-1">
+                <strong>${item.name}</strong><br>
+                <small>${item.price} ₽ × <input type="number" value="${item.quantity}" 
+                    min="1" class="form-control form-control-sm d-inline w-auto" 
+                    style="width: 70px;" 
+                    onchange="updateQuantity(${item.id}, parseInt(this.value))">
+                </small>
+            </div>
+            <div class="text-end">
+                <div>${(item.price * item.quantity).toFixed(2)} ₽</div>
+                <button class="btn btn-sm btn-outline-danger mt-1" onclick="removeFromCart(${item.id})">Удалить</button>
+            </div>
+        `;
+        container.appendChild(itemEl);
+        total += item.price * item.quantity;
+    });
+    
+    totalEl.textContent = total.toFixed(2);
+    document.getElementById('confirmTotal').textContent = total.toFixed(2) + ' ₽';
+}
+
+// Поиск
+document.getElementById('productSearch').addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.style.display = item.dataset.name.includes(query) ? 'block' : 'none';
+    });
+});
+
+// === Модалки и оплата ===
+function showConfirmModal() {
+    if (cart.length === 0) return;
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    modal.show();
+}
+
+function showPaymentModal() {
+    bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+    const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modal.show();
+}
+
+function processPayment() {
+    document.getElementById('paymentSpinner').style.display = 'inline-block';
+    setTimeout(() => {
+        fetch('{% url "bakery:order_create_ajax" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+            body: JSON.stringify({ items: cart })
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('paymentSpinner').style.display = 'none';
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+                document.getElementById('successOrderId').textContent = `#${data.order_id}`;
+                document.getElementById('successTotal').textContent = `${data.total_amount} ₽`;
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось создать заказ'));
+            }
+        })
+        .catch(() => {
+            document.getElementById('paymentSpinner').style.display = 'none';
+            alert('Ошибка при создании заказа');
+        });
+    }, 800);
+}
+
+function resetCart() {
+    cart = [];
+    renderCart();
+    document.querySelectorAll('.modal').forEach(modal => {
+        bootstrap.Modal.getInstance(modal)?.hide();
+    });
+}
+</script>
+{% endblock %}
